@@ -1,0 +1,146 @@
+---
+title: "Population differentiation"
+author: "Bruce Cochrane"
+date: "October 19, 2016"
+output: html_document
+---
+
+```{r}
+library(hierfstat)
+library(knitr)
+```
+
+### Read and convert Data
+
+Start with combined data from ceu and yri
+
+```{r}
+#dat <-read.vcf("./Data/lct-cy-noindel.recode.vcf")
+dat <-monogon(dat20)
+```
+
+Convert to genind
+```{r}
+dat.gen <-loci2genind(dat)
+```
+
+Load master sample list
+
+```{r}
+samplist <-read.table("./Data/sampleList2.tsv",header=TRUE, sep = "\t")
+colnames(samplist)
+```
+
+That is actually really nice, in that it has both population superpopulation codes.
+
+```{r}
+smplist.sub <-data.frame(samplist[,c(1,4,6)])
+head(smplist.sub)
+```
+
+```{r}
+sbj <-rownames(dat)
+test <-smplist.sub[which(smplist.sub$Sample.name %in% sbj),]
+```
+
+Just as a long shot
+
+```{r}
+dat.gen@pop <-as.factor(test[,3])
+```
+
+
+```{r}
+bt <-basic.stats(dat.gen)
+```
+
+May want to use the --remove-indels flag in vcftools.Complete command is
+
+vcftools --gzvcf lct.ceu-yri.vcf.gz --out lct-cy-noindel --remove-indels --recode
+
+And it is done as per above.  Now we can see what a PCA looks like:
+
+```{r}
+dat.pca <-indpca(dat.gen,ind.labels = dat.gen@pop)
+plot(dat.pca,cex=.5,col=as.numeric(dat.gen@pop))
+```
+
+Not all that bad.  We need to see if we can get a data file with a random sample (once again)
+
+### Working with random SNPs
+
+We.re going to use an old list, obtained as the following:
+
+```{r}
+dat.pos <-read.csv("/Users/cochrabj/Dropbox/Public/BIO342/scratch/snp.chrom.pos.txt")
+```
+
+Now what we want to do is to write a clean text file of the third column; we will then take it to 1000 genomes and see if we can get a vcf of multiple populations:
+
+```{r}
+saved <-dat.pos$marker.id
+write.table(saved,file="./Data/randomSNP.txt",quote=FALSE, row.names=FALSE, col.names=FALSE)
+```
+
+And this doesn't seem to work.  A better approach might be to work with a single chromosome - download the VCF, clean it up and sample, and then do PCA there.  Another great idea - use a three d plot to show components 1-3.
+
+Files are at ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/. has both vcf and tbi files.
+
+Try a chromosome 20 download - may choke things up, but so be it.
+
+Try to read it.  First get the locus file
+
+```{r}
+dat20.inf <-VCFloci("./Data/Chromosome20.vcf.gz")
+```
+
+OK.  Now we should be able to generate a random set of numbers  - let's say 2000 - and sample the data
+
+```{r}
+smp <-sample(1:nrow(dat20.inf),2000)
+```
+
+And get a VCF of those files with
+
+```{r}
+dat20 <-read.vcf("./Data/Chromosome20.vcf.gz",which.loci = smp)
+```
+
+And no time to do it now, but need to use the same sample for parsing to population as above, add make the genind, etc.
+
+Think about doing indel removal in R:
+
+```{r}
+head(colnames(dat))
+```
+
+Find those that don't begin with rs:
+
+```{r}
+pfx <-sapply(colnames(dat), function(x) substr(x,1,2))
+which(pfx!="rs")
+```
+
+Doesn't seem to work.  How about if we find those for which dat20.info$ALT is not equal to A, G, C, or T
+
+```{r}
+trsnps <-dat20.inf.sub$ID[which(dat20.inf.sub$ALT %in% c("A","G","C","T"))]
+```
+
+Note that we need to subset dat20.inf
+
+```{r}
+dat20.inf.sub <-dat20.inf[smp,]
+```
+
+And all of that, with a little tuning, will give us what we want.  Manana.
+
+Order is
+
+1.  read info file
+2.  create sample
+3.  read vcf subset
+4.  Identify and remove indels
+5.  Convert to genind
+6.  Add pop or superpop flags
+7  go for it.

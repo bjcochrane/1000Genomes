@@ -1,0 +1,77 @@
+---
+title: <center>Visualizing Sequences</center>
+author: <center></center>
+date: <center>`r format(Sys.Date(),format="%%B %%d %%Y")`</center>
+csl: ~/Dropbox/genetics.csl.txt 
+output: word_document
+---
+
+### Background
+
+In this exercise, we will examine a region of chromosome 8 (8q24) that has been implicated in colon cancer.  Per the Stanford Personal Genomics lectures, we started with rs6983267 from the ceu population, expanding the window somewhat to see what we see.
+
+```{r}
+library(knitr)
+```
+
+```{r}
+str <-("./Data/rs6983267.ceu.vcf.gz")
+dat <-read.vcf(str)
+dat.info <-VCFloci(str)
+```
+
+Pretty good set of loci.  Now, how to visualize?
+
+Let's start by subsetting, taking a random sample of 100 SNPs and 20 inviduals:
+
+```{r}
+snp.sub <-sample(1:ncol(dat),100)
+samp.sub <-sample(1:nrow(dat),20)
+dat.sub <-dat[samp.sub,snp.sub]
+```
+
+```{r}
+sm <-summary(dat.sub)
+```
+
+
+Here's a possibility.  Start with the whole database and get the ones with more than one allele
+
+```{r}
+als <-getAlleles(dat)
+  poly2 <-sapply(als,length)
+```
+
+OK.  Now get a subset of polymorphisms
+
+```{r}
+loc.poly <-which(poly2==2)
+```
+
+Superb.  Now subset dat by that
+
+```{r}
+dat.sub <-dat[,loc.poly]
+```
+
+Now we can visualize a chunk
+
+```{r}
+kable(data.frame(dat.sub[1:20,1:10]))
+```
+
+Can we get their positions?
+
+```{r}
+dat.pos.10 <- dat.info$POS[which(dat.info$ID %in% colnames(dat.sub[1:10]))]
+```
+
+```{r}
+range(dat.pos.10)
+max(dat.pos.10)-min(dat.pos.10)
+```
+
+```{r}
+plot(dat.pos.10/10^6,rep(1,10),type="b",ylim=c(.95,1.05),col="blue",xlim=c(128.3130,128.3150))
+```
+
