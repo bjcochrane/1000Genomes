@@ -66,3 +66,70 @@ dat.ceu <-dat[which(rownames(dat) %in% nms.ceu),]
 dat.yri <-dat[which(rownames(dat) %in% nms.yri),]
 ```
 
+At this point, we need to eliminate monomorphics and set MAF - I believe there is old code to do this - need to get it imported.
+
+### Get rid of monomorphics
+
+```{r remove monomorphics}
+monogon <-function(vfile){
+  vfile[, sapply(vfile, nlevels) > 1]
+}
+  
+```
+
+
+
+```{r}
+dat.ceu.smp <-monogon(dat.ceu)
+dat.yri.smp <-monogon(dat.yri)
+```
+
+### And set MAF
+
+```{r}
+setmaf <-function(vfile, maf=.05){
+  vfile.sum <-summary(vfile)
+
+frqs <-sapply(vfile.sum, function(x) min(x$allele)/sum(x$allele)) #Calculate minor allele frequencies
+
+vfile[,which(frqs>=maf)] 
+}
+  
+```
+
+```{r}
+dat.ceu.smp <-setmaf(dat.ceu.smp)
+dat.yri.smp <-setmaf(dat.yri.smp)
+```
+
+### Removing Labels
+
+This is only for cosmetic reasons - to get the snp labels out for plotting
+
+```{r}
+lblstrip <-function(vfile){ attr(vfile,"Labels") <-NULL
+vfile}
+```
+
+### Saving the data
+
+```{r}
+lct <-list(ceu.vcf=dat.ceu.smp,yri.vcf=dat.yri.smp)
+save(lct,file="./ProcessedData/lct.rda")
+```
+
+So flesh in the above, and we have the start of a writeup.  Everything that follows is scratch.
+
+```{r}
+ceu.r <-LDscan(dat.ceu.smp)
+yri.r <-LDscan(dat.yri.smp)
+```
+
+```{r}
+LDmap(ceu.r)
+```
+
+```{r}
+LDmap(yri.r)
+```
+
